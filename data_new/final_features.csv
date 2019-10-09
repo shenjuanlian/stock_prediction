@@ -1,0 +1,37 @@
+feature
+sp500_Close_RDP1
+sp500_Adj Close_RDP1
+sp500_Low_RDP1
+sp500_High_RDP1
+sp500_Volume_RDP7
+hsi_Volume_RDP30
+sp500_Volume_RDP30
+hsi_High_RDP1
+sp500_Open_RDP1
+sp500_Volume_RDP1
+hsi_Open_RDP1
+hsi_Volume_RDP7
+hsi_Low_RDP1
+hsi_Adj Close_RDP1
+hsi_Close_RDP1
+sp500_High_RDP7
+hsi_Volume_RDP1
+sp500_Open_RDP7
+hsi_Open_RDP30
+sp500_Open_RDP30
+hsi_Open_RDP7
+sp500_Close_RDP7
+hsi_Adj Close_RDP7
+sp500_High_RDP30
+sp500_Low_RDP7
+hsi_Close_RDP7
+sp500_Adj Close_RDP7
+hsi_Low_RDP30
+hsi_Low_RDP7
+hsi_High_RDP7
+sp500_Close_RDP30
+sp500_Low_RDP30
+sp500_Adj Close_RDP30
+hsi_High_RDP30
+hsi_Adj Close_RDP30
+hsi_Close_RDP30

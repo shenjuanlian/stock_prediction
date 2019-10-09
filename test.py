@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-# df = pd.DataFrame([[1,18,3],[4,5,6],[7,8,9]],columns=['a','b','c'])
+df = pd.DataFrame([[1,18,3],[4,5,6],[7,8,9]],columns=['a','b','c'])
 # df1 = pd.DataFrame([[11,21,31],[41,51,61],[71,81,91]],columns=['a1','b1','c1'])
 # df2 = pd.concat([df,df1],axis=1)
 # df['d'] = [7,8,9]
@@ -29,13 +29,19 @@ import tensorflow as tf
 # a.pop()
 # print(a)
 
-
-
-a = tf.zeros([3, 5, 7, 9])
-
-with tf.compat.v1.Session() as sess:
-    _a = sess.run(a)
-    print(_a)
+score = {}
+columns = df.columns.values.tolist()
+for i in range(len(columns)):
+    score[columns[i]] = 0
+print(score)
+for j in range(len(columns)):
+    score[columns[j]] += df[df['a'] == columns[j]]
+print(score)
+# a = tf.zeros([3, 5, 7, 9])
+#
+# with tf.compat.v1.Session() as sess:
+#     _a = sess.run(a)
+#     print(_a)
 
 
 

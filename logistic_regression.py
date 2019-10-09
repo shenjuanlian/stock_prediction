@@ -15,7 +15,7 @@ flags.DEFINE_float("learning_rate",
 flags.DEFINE_integer("max_steps",
                      default=100000,
                      help="Number of training steps to run.")
-
+flags.DEFINE_integer("batch_size",default=256,help="batch size")
 flags.DEFINE_integer("decay_step",default=100000,help="the total step of decay")
 flags.DEFINE_float("min_learning_rate",default=1e-6,help="the minimum learning rate")
 flags.DEFINE_float("max_gradient_norm",default=3.0,help="the maximum gradient")
@@ -23,6 +23,7 @@ FLAGS = flags.FLAGS
 
 def load_data(inSample,outSample,pointer=0):
     data = pd.read_csv("./data_new/norm_final_data_dis.csv")
+    data = data[['sp500_Close_RDP1','sp500_Adj Close_RDP1','sp500_Low_RDP1','sp500_High_RDP1','hsi_label']]
     train = data.loc[pointer:pointer+inSample]
     test = data.loc[pointer+inSample:pointer+inSample+outSample]
     labels_train = train['hsi_label']
@@ -48,7 +49,7 @@ def main(argv):
 
   train_data,test_data,labels_train,labels_test = load_data(2687,500)
   if argv[0] == "train":
-    features, labels = build_input_pipeline(train_data, labels_train, 128)
+    features, labels = build_input_pipeline(train_data, labels_train, FLAGS.batch_size)
   else:
     features, labels = tf.cast(test_data.values, tf.float32),tf.cast(labels_test.values, tf.int32)
 
@@ -59,19 +60,24 @@ def main(argv):
         kernel_posterior_fn=tfp.layers.default_mean_field_normal_fn(),
         bias_posterior_fn=tfp.layers.default_mean_field_normal_fn())
     logits = layer(features)
-    labels_distribution = tfd.Bernoulli(logits=logits)
+
   # Compute the -ELBO as the loss, averaged over the batch size.
   if argv[0] == "train":
+      labels = tf.reshape(labels,[-1,1])
+      labels_distribution = tfd.Bernoulli(logits=logits)
+      a = labels_distribution.log_prob(labels)
       neg_log_likelihood = -tf.reduce_mean(
           input_tensor=labels_distribution.log_prob(labels))
-      kl = sum(layer.losses) / len(train_data)
+      kl = sum(layer.losses) / FLAGS.batch_size
       elbo_loss = neg_log_likelihood + kl
   else:
       tf_label = tf.placeholder(dtype=tf.int32)
       tf_prediction = tf.placeholder(dtype=tf.int32)
-      probability = tf.nn.sigmoid(logits)
-      predictions = tf.cast(tf.nn.sigmoid(logits) > 0.5, dtype=tf.int32)
+      probability = tf.exp(logits)/(1+tf.exp(logits))
+      # larger than 0.5 than labeled as 1.
+      predictions = tf.cast(logits > 0, dtype=tf.int32)
       tf_precision,tf_precision_update = tf.metrics.precision(tf_label,tf_prediction)
+      tf_recall,tf_recall_update = tf.metrics.recall(tf_label,tf_prediction)
       tf_accuracy,tf_accuracy_update = tf.metrics.accuracy(tf_label,tf_prediction)
   if argv[0] == "train":
       with tf.compat.v1.name_scope("train"):
@@ -97,15 +103,22 @@ def main(argv):
     # Fit the model to data.
     sess.run(init_op)
     if argv[0] == "train":
-        # _logits = sess.run(logits)
-        # print(_logits)
-        # print(_logits.shape)
+        loss_list = []
+        _labels = sess.run(labels)
+        print(_labels.shape)
         for step in range(FLAGS.max_steps):
           _= sess.run(train_op)
-          if step % 100 == 0:
+          # _a,_labels_distribution,_logits = sess.run([a,neg_log_likelihood,logits])
+          # print(_logits.shape)
+          # print(_a.shape)
+          # print(_labels_distribution)
+          if step % 1000 == 0:
             loss_value,learning_rate = sess.run([elbo_loss,FLAGS.learning_rate])
+            loss_list.append(loss_value)
             print("Step: {:>3d} Loss: {:.3f} Learning_rate: {:.6f}".format(
                 step, loss_value,learning_rate))
+        plt.plot(loss_list)
+        plt.show()
         saver = tf.train.Saver()
         saver.save(sess, "./model/MyModel.ckpt")
 
@@ -126,25 +139,26 @@ def main(argv):
                 flag.append('blue')
             else:
                 flag.append('yellow')
-            sess.run(tf_precision_update, {tf_label: labels_test[i], tf_prediction: pre[i]})
+            sess.run([tf_precision_update,tf_accuracy_update,tf_recall_update], {tf_label: labels_test[i], tf_prediction: pre[i]})
         plt.xlabel("sample index")
         plt.ylabel("probability of Price increased")
         plt.scatter(range(501),_probability,c=flag)
         plt.show()
         print("tf_precision:")
-        print(sess.run(tf_precision))
-        for i in range(labels_test.shape[0]):
-            sess.run(tf_accuracy_update, {tf_label: labels_test[i], tf_prediction: pre[i]})
+        final_precision =sess.run(tf_precision)
+        print(final_precision)
+        # for i in range(labels_test.shape[0]):
+        #     sess.run(tf_accuracy_update, {tf_label: labels_test[i], tf_prediction: pre[i]})
         print("tf_accuracy:")
         print(sess.run(tf_accuracy))
+        print("tf_recall:")
+        final_recall = sess.run(tf_recall)
+        print(final_recall)
+        print("tf_f1_score:")
+        print(2*final_precision*final_recall/(final_precision+final_recall))
 
 
 
 if __name__ == "__main__":
   tf.compat.v1.app.run(argv=["test"])
 
-# [[-0.04524215]
-#  [ 0.5557304 ]
-#  [-0.46326762]
-#  [-0.14334992]
-#  [ 0.3364817 ]]
