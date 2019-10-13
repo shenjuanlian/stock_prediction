@@ -7,11 +7,11 @@ pd.set_option('display.max_columns', None)
 #显示所有行
 pd.set_option('display.max_rows', None)
 
-def feature_extract(index,max_depth):
+def feature_extract(index,max_depth,min_samples_split,min_samples_leaf):
     final_data = pd.read_csv('./data_new/norm_final_data_dis.csv')
     score = final_data['hsi_label']
     final_data = final_data.drop(columns=['hsi_label'])
-    alg = RandomForestClassifier(bootstrap=True, n_estimators=100,
+    alg = RandomForestClassifier(bootstrap=True, n_estimators=100,min_samples_split = min_samples_split,min_samples_leaf=min_samples_leaf,
                                 random_state=50,oob_score=True,max_depth=max_depth)  # 随机数生成种子
     alg.fit(final_data.values, score)
 
@@ -19,16 +19,18 @@ def feature_extract(index,max_depth):
     feature_importance = list(map(combine_list,zip(final_data.columns,alg.feature_importances_)))
 
     feature_importance = pd.DataFrame(feature_importance,columns=["feature","importance"]).sort_values(by = "importance", ascending=False)
-    filter_feature = feature_importance[feature_importance["importance"]>0.01]
+    filter_feature = feature_importance[feature_importance["importance"]>0]
 
     print(filter_feature)
 
     filter_feature.to_csv("./data_new/feature_extracted_{}.csv".format(index))
 def adjustment():
-    index = 7
-    for max_depth in [10,20,50,100]:
-        feature_extract(index,max_depth)
-        index = index +1
+    index = 1
+    for max_depth in [5,20]:
+        for min_samples_split in [2, 4, 8]:
+            for min_samples_leaf in [1, 2]:
+                feature_extract(index,max_depth,min_samples_split,min_samples_leaf)
+                index = index +1
 def comprehensive_eva():
     score = {}
     data = pd.read_csv("./data_new/norm_final_data_dis.csv")

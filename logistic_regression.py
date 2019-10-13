@@ -23,9 +23,15 @@ FLAGS = flags.FLAGS
 
 def load_data(inSample,outSample,pointer=0):
     data = pd.read_csv("./data_new/norm_final_data_dis.csv")
-    data = data[['sp500_Close_RDP1','sp500_Adj Close_RDP1','sp500_Low_RDP1','sp500_High_RDP1','hsi_label']]
+    # data = data[['sp500_Close_RDP1','sp500_Adj Close_RDP1','sp500_Low_RDP1','sp500_High_RDP1',
+    #              'sp500_Volume_RDP7','hsi_Volume_RDP30','sp500_Open_RDP1','hsi_Low_RDP1','sp500_High_RDP7',
+    #              'sp500_Volume_RDP1','hsi_High_RDP1','hsi_Adj Close_RDP1','hsi_Close_RDP1','sp500_Open_RDP30',
+    #              'hsi_Volume_RDP7','sp500_Volume_RDP30','sp500_Close_RDP7','hsi_Open_RDP1','sp500_Adj Close_RDP7',
+    #              'hsi_Low_RDP30','hsi_label']]
     train = data.loc[pointer:pointer+inSample]
     test = data.loc[pointer+inSample:pointer+inSample+outSample]
+    # print(train.head())
+    # print(test.head())
     labels_train = train['hsi_label']
     labels_test = test['hsi_label']
     train_data = train.drop(columns=['hsi_label'])
@@ -101,31 +107,29 @@ def main(argv):
 
   with tf.compat.v1.Session() as sess:
     # Fit the model to data.
+
     sess.run(init_op)
     if argv[0] == "train":
         loss_list = []
         _labels = sess.run(labels)
-        print(_labels.shape)
+        avg_loss = 0
         for step in range(FLAGS.max_steps):
-          _= sess.run(train_op)
-          # _a,_labels_distribution,_logits = sess.run([a,neg_log_likelihood,logits])
-          # print(_logits.shape)
-          # print(_a.shape)
-          # print(_labels_distribution)
-          if step % 1000 == 0:
-            loss_value,learning_rate = sess.run([elbo_loss,FLAGS.learning_rate])
-            loss_list.append(loss_value)
-            print("Step: {:>3d} Loss: {:.3f} Learning_rate: {:.6f}".format(
-                step, loss_value,learning_rate))
+            _= sess.run(train_op)
+            loss_value,learningRate = sess.run([elbo_loss,FLAGS.learning_rate])
+            avg_loss +=loss_value
+            loss_list.append(avg_loss/(step+1))
+            if step % 1000 == 0:
+                print("Step: {:>3d} Loss: {:.3f} Learning_rate: {:.6f}".format(
+                    step, loss_value, learningRate))
         plt.plot(loss_list)
         plt.show()
         saver = tf.train.Saver()
-        saver.save(sess, "./model/MyModel.ckpt")
+        saver.save(sess, "./model_36/MyModel.ckpt")
 
     else:
         np.set_printoptions(threshold=np.inf)
         saver = tf.train.Saver()
-        saver.restore(sess, './model/MyModel.ckpt')
+        saver.restore(sess, './model_36/MyModel.ckpt')
         pre, _probability,labels_test = sess.run([predictions,probability,labels])
         labels_test = np.array(labels_test).reshape(len(labels_test),1)
         flag = []
@@ -147,8 +151,6 @@ def main(argv):
         print("tf_precision:")
         final_precision =sess.run(tf_precision)
         print(final_precision)
-        # for i in range(labels_test.shape[0]):
-        #     sess.run(tf_accuracy_update, {tf_label: labels_test[i], tf_prediction: pre[i]})
         print("tf_accuracy:")
         print(sess.run(tf_accuracy))
         print("tf_recall:")
